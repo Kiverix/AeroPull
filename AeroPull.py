@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import pygame
 import random
 from PIL import Image, ImageTk
+from datetime import datetime
 
 class SplashScreen:
     def __init__(self):
@@ -238,6 +239,19 @@ class FastDLDownloader:
             messagebox.showerror("Invalid URL", "Please enter a valid URL starting with http:// or https://")
             return
         
+        # Create timestamped folder for scraping
+        now = datetime.now()
+        folder_name = f"SCRAPE_{now.strftime('%d/%m_%H:%M')}"
+        # Replace invalid characters for Windows folder names
+        folder_name = folder_name.replace('/', '-').replace(':', '-')
+        self.scrape_folder = os.path.join(os.getcwd(), folder_name)
+        
+        try:
+            os.makedirs(self.scrape_folder, exist_ok=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not create scrape folder: {str(e)}")
+            return
+        
         self.play_sound("join.wav")
             
         self.fastdl_url = url
@@ -265,7 +279,8 @@ class FastDLDownloader:
             if not filename:
                 filename = "downloaded_file"
                 
-            save_path = os.path.join(os.getcwd(), filename)
+            # Save file to the timestamped scrape folder
+            save_path = os.path.join(self.scrape_folder, filename)
             
             self.update_status(f"Downloading {filename}...")
             
