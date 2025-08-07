@@ -3,11 +3,13 @@ import requests
 import tkinter as tk
 from tkinter import ttk, messagebox
 from threading import Thread
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import pygame
 import random
 from PIL import Image, ImageTk
 from datetime import datetime
+import time
+from bs4 import BeautifulSoup
 
 class SplashScreen:
     def __init__(self):
@@ -16,7 +18,6 @@ class SplashScreen:
         self.splash.configure(bg='#1e1e1e')
         self.splash.overrideredirect(True)
         
-        # Set icon
         try:
             icon_path = os.path.join("resources", "sourceclown.ico")
             if os.path.exists(icon_path):
@@ -24,25 +25,19 @@ class SplashScreen:
         except Exception:
             pass
         
-        # Make splash stay on top
         try:
             self.splash.attributes('-topmost', True)
         except Exception:
             pass
         
-        # Play random sound
         self.play_random_sound()
         
-        # Display images
         self.setup_images()
         
-        # Add text labels
         self.setup_labels()
         
-        # Center and show window
         self.center_window(500, 375)
         
-        # Start loading animation
         self.loading_var = tk.StringVar(value="Loading")
         self.loading_label = tk.Label(
             self.splash, 
@@ -53,10 +48,8 @@ class SplashScreen:
         )
         self.loading_label.pack(pady=10)
         
-        # Start animation
         self.animate_loading()
         
-        # Close after delay
         self.splash.after(3000, self.close)
         
     def play_random_sound(self):
@@ -80,7 +73,6 @@ class SplashScreen:
             img_frame = tk.Frame(self.splash, bg='#1e1e1e')
             img_frame.pack(side=tk.TOP, pady=(10, 0))
             
-            # Load and display gaq9.png
             gaq9_path = os.path.join("resources", "gaq9.png")
             if os.path.exists(gaq9_path):
                 try:
@@ -89,7 +81,6 @@ class SplashScreen:
                     gaq9_label = tk.Label(img_frame, image=self.gaq9_img, bg='#1e1e1e')
                     gaq9_label.pack(side=tk.LEFT, padx=(0, 10))
                     
-                    # Load and display sourceclown.png (resized to match)
                     sourceclown_path = os.path.join("resources", "sourceclown.png")
                     if os.path.exists(sourceclown_path):
                         sourceclown_img = Image.open(sourceclown_path)
@@ -114,7 +105,7 @@ class SplashScreen:
         
         version_label = tk.Label(
             self.splash, 
-            text="AeroPull Version 0.19 - Made by Kiverix (the clown)", 
+            text="AeroPull Version 0.20 - Made by Kiverix (the clown)", 
             font=("Arial", 10), 
             bg='#1e1e1e', 
             fg='#ffffff'
@@ -146,11 +137,11 @@ class SplashScreen:
 class FastDLDownloader:
     def __init__(self, root):
         self.root = root
-        self.root.title("AeroPull v0.19")
+        self.root.title("AeroPull v0.20")
         
         pygame.mixer.init()
         
-        self.center_window(550, 250)
+        self.center_window(650, 350)
         
         self.set_dark_theme()
         
@@ -159,6 +150,12 @@ class FastDLDownloader:
         self.play_sound("open.wav")
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        self.total_files = 0
+        self.downloaded_files = 0
+        self.total_bytes = 0
+        self.downloaded_bytes = 0
+        self.start_time = None
         
     def center_window(self, width, height):
         screen_width = self.root.winfo_screenwidth()
@@ -198,14 +195,30 @@ class FastDLDownloader:
         self.main_frame = ttk.Frame(self.root, padding="20")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
         
-        ttk.Label(self.main_frame, text="Enter Download URL:").pack(anchor=tk.W, pady=(0, 5))
+        ttk.Label(self.main_frame, text="Enter FastDL Base URL:").pack(anchor=tk.W, pady=(0, 5))
         
-        self.url_entry = ttk.Entry(self.main_frame, width=60)
+        self.url_entry = ttk.Entry(self.main_frame, width=80)
         self.url_entry.pack(fill=tk.X, pady=(0, 10))
-        self.url_entry.insert(0, "https://dl.game-relay.cloud/6953190d-c02b-4536-8dfd-7658840ef9eb/maps/gsh_inferno.bsp.bz2")
+        self.url_entry.insert(0, "")
         
-        self.url_display = ttk.Label(self.main_frame, text="", wraplength=400)
-        self.url_display.pack(fill=tk.X, pady=(0, 10))
+        options_frame = ttk.Frame(self.main_frame)
+        options_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(options_frame, text="Max Depth:").pack(side=tk.LEFT, padx=(0, 5))
+        self.depth_var = tk.StringVar(value="0")
+        self.depth_entry = ttk.Entry(options_frame, textvariable=self.depth_var, width=5)
+        self.depth_entry.pack(side=tk.LEFT)
+        
+        ttk.Label(options_frame, text="File Types:").pack(side=tk.LEFT, padx=(10, 5))
+        self.filetypes_var = tk.StringVar(value=".bsp,.bz2")
+        self.filetypes_entry = ttk.Entry(options_frame, textvariable=self.filetypes_var, width=40)
+        self.filetypes_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        self.stats_label = ttk.Label(self.main_frame, text="Files: 0/0 | Bytes: 0/0")
+        self.stats_label.pack(fill=tk.X, pady=(0, 5))
+        
+        self.timer_label = ttk.Label(self.main_frame, text="Elapsed time: 00:00:00")
+        self.timer_label.pack(fill=tk.X, pady=(0, 5))
         
         self.progress = ttk.Progressbar(self.main_frame, orient=tk.HORIZONTAL, mode='determinate')
         self.progress.pack(fill=tk.X, pady=5)
@@ -216,7 +229,7 @@ class FastDLDownloader:
         btn_frame = ttk.Frame(self.main_frame)
         btn_frame.pack(pady=10)
         
-        self.download_btn = ttk.Button(btn_frame, text="Download", command=self.start_download)
+        self.download_btn = ttk.Button(btn_frame, text="Download Entire Library", command=self.start_download)
         self.download_btn.pack(side=tk.LEFT, padx=5)
         
         self.cancel_btn = ttk.Button(btn_frame, text="Cancel", command=self.cancel_download, state=tk.DISABLED)
@@ -239,11 +252,16 @@ class FastDLDownloader:
             messagebox.showerror("Invalid URL", "Please enter a valid URL starting with http:// or https://")
             return
         
-        # Create timestamped folder for scraping
+        try:
+            max_depth = int(self.depth_var.get())
+        except ValueError:
+            messagebox.showerror("Invalid Depth", "Please enter a valid number for max depth")
+            return
+        
+        file_types = [ext.strip().lower() for ext in self.filetypes_var.get().split(",")]
+        
         now = datetime.now()
-        folder_name = f"SCRAPE_{now.strftime('%d/%m_%H:%M')}"
-        # Replace invalid characters for Windows folder names
-        folder_name = folder_name.replace('/', '-').replace(':', '-')
+        folder_name = f"SCRAPE_{now.strftime('%d-%m_%H-%M')}"
         self.scrape_folder = os.path.join(os.getcwd(), folder_name)
         
         try:
@@ -254,39 +272,78 @@ class FastDLDownloader:
         
         self.play_sound("join.wav")
             
-        self.fastdl_url = url
-        self.url_display.config(text=f"Downloading: {url}")
+        self.base_url = url if url.endswith('/') else url + '/'
+        self.status.config(text=f"Downloading from: {self.base_url}")
         
         self.downloading = True
         self.cancel_requested = False
         self.download_btn.config(state=tk.DISABLED)
         self.cancel_btn.config(state=tk.NORMAL)
         
-        download_thread = Thread(target=self.download_file)
+        self.total_files = 0
+        self.downloaded_files = 0
+        self.total_bytes = 0
+        self.downloaded_bytes = 0
+        self.start_time = time.time()
+        
+        download_thread = Thread(target=self.scrape_and_download, args=(self.base_url, max_depth, file_types))
         download_thread.start()
         
         self.root.after(100, self.check_progress)
     
-    def cancel_download(self):
-        self.cancel_requested = True
-        self.status.config(text="Cancelling download...")
-    
-    def download_file(self):
+    def scrape_and_download(self, url, max_depth, file_types, current_depth=0):
+        if self.cancel_requested or current_depth > max_depth:
+            return
+            
         try:
-            parsed_url = urlparse(self.fastdl_url)
-            filename = os.path.basename(parsed_url.path)
+            response = requests.get(url)
+            response.raise_for_status()
             
-            if not filename:
-                filename = "downloaded_file"
+            soup = BeautifulSoup(response.text, 'html.parser')
+            links = soup.find_all('a')
+            
+            for link in links:
+                if self.cancel_requested:
+                    return
+                    
+                href = link.get('href')
+                if href == '../' or href == './':
+                    continue
+                    
+                full_url = urljoin(url, href)
                 
-            # Save file to the timestamped scrape folder
-            save_path = os.path.join(self.scrape_folder, filename)
+                if href.endswith('/'):
+                    self.scrape_and_download(full_url, max_depth, file_types, current_depth + 1)
+                else:
+                    ext = os.path.splitext(href)[1].lower()
+                    if any(ext == file_ext for file_ext in file_types):
+                        self.total_files += 1
+                        self.update_stats()
+                        
+                        try:
+                            head = requests.head(full_url)
+                            self.total_bytes += int(head.headers.get('content-length', 0))
+                            self.update_stats()
+                        except:
+                            pass
+                            
+                        self.download_file(full_url, url)
             
-            self.update_status(f"Downloading {filename}...")
+        except Exception as e:
+            self.update_status(f"Error scraping {url}: {str(e)}")
+    
+    def download_file(self, file_url, base_url):
+        try:
+            relative_path = file_url[len(base_url):]
+            save_path = os.path.join(self.scrape_folder, relative_path)
             
-            with requests.get(self.fastdl_url, stream=True) as r:
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            
+            self.update_status(f"Downloading {relative_path}...")
+            
+            with requests.get(file_url, stream=True) as r:
                 r.raise_for_status()
-                total_size = int(r.headers.get('content-length', 0))
+                file_size = int(r.headers.get('content-length', 0))
                 
                 with open(save_path, 'wb') as f:
                     downloaded = 0
@@ -301,19 +358,43 @@ class FastDLDownloader:
                         if chunk:
                             f.write(chunk)
                             downloaded += len(chunk)
-                            progress = int((downloaded / total_size) * 100) if total_size > 0 else 0
+                            self.downloaded_bytes += len(chunk)
+                            progress = int((self.downloaded_bytes / self.total_bytes) * 100) if self.total_bytes > 0 else 0
                             self.update_progress(progress)
+                            self.update_stats()
                 
             if not self.cancel_requested:
-                self.update_status(f"Download complete! Saved to {save_path}")
-                self.play_sound("information.wav")
+                self.downloaded_files += 1
+                self.update_stats()
                 
         except Exception as e:
-            self.update_status(f"Error: {str(e)}")
-            messagebox.showerror("Error", f"Failed to download file:\n{str(e)}")
-        finally:
-            self.downloading = False
-            self.root.after(100, self.reset_ui)
+            self.update_status(f"Error downloading {file_url}: {str(e)}")
+    
+    def update_stats(self):
+        self.root.after(0, lambda: self.stats_label.config(
+            text=f"Files: {self.downloaded_files}/{self.total_files} | Bytes: {self.format_bytes(self.downloaded_bytes)}/{self.format_bytes(self.total_bytes)}"
+        ))
+        
+        if self.start_time and self.downloading:
+            elapsed = time.time() - self.start_time
+            hours = int(elapsed // 3600)
+            minutes = int((elapsed % 3600) // 60)
+            seconds = int(elapsed % 60)
+            self.root.after(0, lambda: self.timer_label.config(
+                text=f"Elapsed time: {hours:02d}:{minutes:02d}:{seconds:02d}"
+            ))
+    
+    def format_bytes(self, bytes):
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if bytes < 1024.0:
+                return f"{bytes:.2f} {unit}"
+            bytes /= 1024.0
+        return f"{bytes:.2f} TB"
+    
+    def cancel_download(self):
+        self.cancel_requested = True
+        self.play_sound("information.wav")
+        self.status.config(text="Cancelling download...")
     
     def update_status(self, text):
         self.root.after(0, lambda: self.status.config(text=text))
@@ -322,13 +403,36 @@ class FastDLDownloader:
         self.root.after(0, lambda: self.progress.config(value=value))
     
     def check_progress(self):
-        if self.downloading:
+        if self.downloading and not self.cancel_requested:
+            self.update_stats()
             self.root.after(100, self.check_progress)
+        else:
+            if not self.cancel_requested and self.downloaded_files > 0:
+                self.update_status(f"Download complete! {self.downloaded_files} files saved to {self.scrape_folder}")
+                self.play_sound("information.wav")
+            elif self.cancel_requested:
+                self.update_status(f"Download cancelled! {self.downloaded_files} files saved to {self.scrape_folder}")
+            self.reset_ui()
     
     def reset_ui(self):
+        self.downloading = False
         self.download_btn.config(state=tk.NORMAL)
         self.cancel_btn.config(state=tk.DISABLED)
-        self.progress.config(value=0)
+        
+        if self.start_time:
+            elapsed = time.time() - self.start_time
+            hours = int(elapsed // 3600)
+            minutes = int((elapsed % 3600) // 60)
+            seconds = int(elapsed % 60)
+            
+            if self.cancel_requested:
+                self.timer_label.config(
+                    text=f"Cancelled after: {hours:02d}:{minutes:02d}:{seconds:02d}"
+                )
+            else:
+                self.timer_label.config(
+                    text=f"Final time: {hours:02d}:{minutes:02d}:{seconds:02d}"
+                )
     
     def play_sound(self, filename):
         try:
@@ -344,11 +448,9 @@ class FastDLDownloader:
         self.root.after(200, self.root.destroy)
 
 if __name__ == "__main__":
-    # Show splash screen first
     splash = SplashScreen()
     splash.show()
     
-    # Then start main application
     root = tk.Tk()
     app = FastDLDownloader(root)
     root.mainloop()
