@@ -145,7 +145,7 @@ class SplashScreen:
 class FastDLDownloader:
     def __init__(self, root):
         self.root = root
-        self.root.title("scraper v0.19")
+        self.root.title("AeroPull v0.19")
         
         pygame.mixer.init()
         
