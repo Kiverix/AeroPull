@@ -8,118 +8,144 @@ import pygame
 import random
 from PIL import Image, ImageTk
 
-def show_splash():
-    """Show splash screen before main application"""
-    splash = tk.Tk()
-    splash.title("Welcome to AeroPull")
-    splash.configure(bg='#1e1e1e')
-    splash.overrideredirect(True)
-    
-    try:
-        icon_path = os.path.join("resources", "sourceclown.ico")
-        if os.path.exists(icon_path):
-            splash.iconbitmap(icon_path)
-    except Exception:
-        pass
-    
-    try:
-        splash.attributes('-topmost', True)
-    except Exception:
-        pass
-    
-    try:
-        pygame.mixer.init()
-        preopen_files = ["preopen1.mp3", "preopen2.mp3", "preopen3.mp3"]
-        chosen = random.choice(preopen_files)
-        sound_path = os.path.join("resources", chosen)
-        if os.path.exists(sound_path):
-            sound = pygame.mixer.Sound(sound_path)
-            sound.set_volume(0.5)
-            sound.play()
-    except Exception:
-        pass
-    
-    try:
-        img_frame = tk.Frame(splash, bg='#1e1e1e')
-        img_frame.pack(side=tk.TOP, pady=(10, 0))
+class SplashScreen:
+    def __init__(self):
+        self.splash = tk.Tk()
+        self.splash.title("Welcome to Scraper")
+        self.splash.configure(bg='#1e1e1e')
+        self.splash.overrideredirect(True)
         
-        gaq9_path = os.path.join("resources", "gaq9.png")
-        if os.path.exists(gaq9_path):
-            try:
-                gaq9_img = Image.open(gaq9_path)
-                splash.gaq9_img = ImageTk.PhotoImage(gaq9_img)
-                gaq9_label = tk.Label(img_frame, image=splash.gaq9_img, bg='#1e1e1e')
-                gaq9_label.pack(side=tk.LEFT, padx=(0, 10))
-            except Exception:
-                pass
+        # Set icon
+        try:
+            icon_path = os.path.join("resources", "sourceclown.ico")
+            if os.path.exists(icon_path):
+                self.splash.iconbitmap(icon_path)
+        except Exception:
+            pass
         
-        sourceclown_path = os.path.join("resources", "sourceclown.png")
-        if os.path.exists(sourceclown_path) and hasattr(splash, 'gaq9_img'):
-            try:
-                sourceclown_img = Image.open(sourceclown_path)
-                sourceclown_img = sourceclown_img.resize(gaq9_img.size, Image.LANCZOS)
-                splash.sourceclown_img = ImageTk.PhotoImage(sourceclown_img)
-                sourceclown_label = tk.Label(img_frame, image=splash.sourceclown_img, bg='#1e1e1e')
-                sourceclown_label.pack(side=tk.LEFT)
-            except Exception:
+        # Make splash stay on top
+        try:
+            self.splash.attributes('-topmost', True)
+        except Exception:
+            pass
+        
+        # Play random sound
+        self.play_random_sound()
+        
+        # Display images
+        self.setup_images()
+        
+        # Add text labels
+        self.setup_labels()
+        
+        # Center and show window
+        self.center_window(500, 375)
+        
+        # Start loading animation
+        self.loading_var = tk.StringVar(value="Loading")
+        self.loading_label = tk.Label(
+            self.splash, 
+            textvariable=self.loading_var, 
+            font=("Arial", 12), 
+            bg='#1e1e1e', 
+            fg='#ffffff'
+        )
+        self.loading_label.pack(pady=10)
+        
+        # Start animation
+        self.animate_loading()
+        
+        # Close after delay
+        self.splash.after(3000, self.close)
+        
+    def play_random_sound(self):
+        try:
+            pygame.mixer.init()
+            preopen_files = [
+                f"preopen{i}.mp3" for i in range(1, 3) 
+                if os.path.exists(os.path.join("resources", f"preopen{i}.mp3"))
+            ]
+            if preopen_files:
+                chosen = random.choice(preopen_files)
+                sound_path = os.path.join("resources", chosen)
+                sound = pygame.mixer.Sound(sound_path)
+                sound.set_volume(0.5)
+                sound.play()
+        except Exception:
+            pass
+    
+    def setup_images(self):
+        try:
+            img_frame = tk.Frame(self.splash, bg='#1e1e1e')
+            img_frame.pack(side=tk.TOP, pady=(10, 0))
+            
+            # Load and display gaq9.png
+            gaq9_path = os.path.join("resources", "gaq9.png")
+            if os.path.exists(gaq9_path):
                 try:
-                    splash.sourceclown_img = ImageTk.PhotoImage(Image.open(sourceclown_path))
-                    sourceclown_label = tk.Label(img_frame, image=splash.sourceclown_img, bg='#1e1e1e')
-                    sourceclown_label.pack(side=tk.LEFT)
+                    gaq9_img = Image.open(gaq9_path)
+                    self.gaq9_img = ImageTk.PhotoImage(gaq9_img)
+                    gaq9_label = tk.Label(img_frame, image=self.gaq9_img, bg='#1e1e1e')
+                    gaq9_label.pack(side=tk.LEFT, padx=(0, 10))
+                    
+                    # Load and display sourceclown.png (resized to match)
+                    sourceclown_path = os.path.join("resources", "sourceclown.png")
+                    if os.path.exists(sourceclown_path):
+                        sourceclown_img = Image.open(sourceclown_path)
+                        sourceclown_img = sourceclown_img.resize(gaq9_img.size, Image.LANCZOS)
+                        self.sourceclown_img = ImageTk.PhotoImage(sourceclown_img)
+                        sourceclown_label = tk.Label(img_frame, image=self.sourceclown_img, bg='#1e1e1e')
+                        sourceclown_label.pack(side=tk.LEFT)
                 except Exception:
                     pass
-    except Exception:
-        pass
+        except Exception:
+            pass
     
-    label = tk.Label(
-        splash, 
-        text="Thank you for using AeroPull!", 
-        font=("Arial", 16, "bold"), 
-        bg='#1e1e1e', 
-        fg='#4fc3f7'
-    )
-    label.pack(pady=(5, 0))
+    def setup_labels(self):
+        label = tk.Label(
+            self.splash, 
+            text="Thank you for using Scraper!", 
+            font=("Arial", 16, "bold"), 
+            bg='#1e1e1e', 
+            fg='#4fc3f7'
+        )
+        label.pack(pady=(5, 0))
+        
+        version_label = tk.Label(
+            self.splash, 
+            text="Version 0.19 - Made by Kiverix (the clown)", 
+            font=("Arial", 10), 
+            bg='#1e1e1e', 
+            fg='#ffffff'
+        )
+        version_label.pack(pady=(5, 0))
     
-    version_label = tk.Label(
-        splash, 
-        text="Aeropull Version 0.18 - With Love, From Kiverix", 
-        font=("Arial", 10), 
-        bg='#1e1e1e', 
-        fg='#ffffff'
-    )
-    version_label.pack(pady=(5, 0))
+    def center_window(self, width, height):
+        screen_width = self.splash.winfo_screenwidth()
+        screen_height = self.splash.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.splash.geometry(f'{width}x{height}+{x}+{y}')
     
-    loading_var = tk.StringVar(value="Loading")
-    loading_label = tk.Label(
-        splash, 
-        textvariable=loading_var, 
-        font=("Arial", 12), 
-        bg='#1e1e1e', 
-        fg='#ffffff'
-    )
-    loading_label.pack(pady=10)
-    
-    screen_width = splash.winfo_screenwidth()
-    screen_height = splash.winfo_screenheight()
-    x = (screen_width // 2) - (500 // 2)
-    y = (screen_height // 2) - (375 // 2)
-    splash.geometry(f'500x375+{x}+{y}')
-    
-    def animate_loading(count=0):
+    def animate_loading(self, count=0):
+        if not hasattr(self, 'splash') or not self.splash.winfo_exists():
+            return
+            
         dots = '.' * ((count % 4) + 1)
-        loading_var.set(f"Loading{dots}")
-        if splash.winfo_exists():
-            splash.after(200, animate_loading, count + 1)
+        self.loading_var.set(f"Loading{dots}")
+        self.splash.after(200, self.animate_loading, count + 1)
     
-    animate_loading()
+    def close(self):
+        if hasattr(self, 'splash') and self.splash.winfo_exists():
+            self.splash.destroy()
     
-    splash.after(3000, splash.destroy)
-    splash.mainloop()
+    def show(self):
+        self.splash.mainloop()
 
 class FastDLDownloader:
     def __init__(self, root):
         self.root = root
-        self.root.title("Aeropull v0.17 - With Love, From Kiverix")
+        self.root.title("scraper v0.19")
         
         pygame.mixer.init()
         
@@ -134,13 +160,10 @@ class FastDLDownloader:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
     def center_window(self, width, height):
-        """Center the window on the screen"""
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        
         x = (screen_width // 2) - (width // 2)
         y = (screen_height // 2) - (height // 2)
-        
         self.root.geometry(f'{width}x{height}+{x}+{y}')
         
     def set_dark_theme(self):
@@ -293,7 +316,6 @@ class FastDLDownloader:
         self.progress.config(value=0)
     
     def play_sound(self, filename):
-        """Play a sound file from the resources folder"""
         try:
             sound_path = os.path.join("resources", filename)
             if os.path.exists(sound_path):
@@ -303,13 +325,15 @@ class FastDLDownloader:
             pass
     
     def on_closing(self):
-        """Handle window close event"""
         self.play_sound("close.wav")
         self.root.after(200, self.root.destroy)
 
 if __name__ == "__main__":
-    show_splash()
+    # Show splash screen first
+    splash = SplashScreen()
+    splash.show()
     
+    # Then start main application
     root = tk.Tk()
     app = FastDLDownloader(root)
     root.mainloop()
