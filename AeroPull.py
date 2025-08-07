@@ -11,7 +11,7 @@ from PIL import Image, ImageTk
 class SplashScreen:
     def __init__(self):
         self.splash = tk.Tk()
-        self.splash.title("Welcome to Scraper")
+        self.splash.title("Welcome to AeroPull")
         self.splash.configure(bg='#1e1e1e')
         self.splash.overrideredirect(True)
         
@@ -104,7 +104,7 @@ class SplashScreen:
     def setup_labels(self):
         label = tk.Label(
             self.splash, 
-            text="Thank you for using Scraper!", 
+            text="Thank you for using AeroPull!", 
             font=("Arial", 16, "bold"), 
             bg='#1e1e1e', 
             fg='#4fc3f7'
@@ -113,7 +113,7 @@ class SplashScreen:
         
         version_label = tk.Label(
             self.splash, 
-            text="Version 0.19 - Made by Kiverix (the clown)", 
+            text="AeroPull Version 0.19 - Made by Kiverix (the clown)", 
             font=("Arial", 10), 
             bg='#1e1e1e', 
             fg='#ffffff'
