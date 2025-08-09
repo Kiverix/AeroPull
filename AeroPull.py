@@ -105,7 +105,7 @@ class SplashScreen:
         
         version_label = tk.Label(
             self.splash, 
-            text="AeroPull Version 0.20 - Made by Kiverix (the clown)", 
+            text="AeroPull Version 0.23 - Made by Kiverix (the clown)", 
             font=("Arial", 10), 
             bg='#1e1e1e', 
             fg='#ffffff'
@@ -137,25 +137,94 @@ class SplashScreen:
 class FastDLDownloader:
     def __init__(self, root):
         self.root = root
-        self.root.title("AeroPull v0.20")
-        
+        self.root.title("AeroPull v0.23")
         pygame.mixer.init()
-        
         self.center_window(650, 350)
-        
         self.set_dark_theme()
-        
+        self.create_custom_title_bar()
         self.setup_ui()
-        
         self.play_sound("open.wav")
-        
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.total_files = 0
         self.downloaded_files = 0
         self.total_bytes = 0
         self.downloaded_bytes = 0
         self.start_time = None
+        self.running = True
+        self.websocket_running = False
+    def create_custom_title_bar(self):
+        self.title_bar = tk.Frame(self.root, bg="#232323", relief=tk.RAISED, bd=0, height=32)
+        self.title_bar.pack(fill=tk.X, side=tk.TOP)
+        self.title_bar.bind('<Button-1>', self.start_move)
+        self.title_bar.bind('<B1-Motion>', self.on_move)
+        title_label = tk.Label(
+            self.title_bar,
+            text="AeroPull v0.23 - With Love, by Kiverix",
+            bg="#232323",
+            fg="#4fc3f7",
+            font=("Arial", 12, "bold")
+        )
+        title_label.pack(side=tk.LEFT, padx=10)
+        close_btn = tk.Button(
+            self.title_bar,
+            text="✕",
+            bg="#232323",
+            fg="#ff5555",
+            font=("Arial", 12, "bold"),
+            bd=0,
+            relief=tk.FLAT,
+            activebackground="#3d3d3d",
+            activeforeground="#ff5555",
+            command=self.on_close,
+            cursor="hand2"
+        )
+        close_btn.pack(side=tk.RIGHT, padx=(0, 10))
+        close_btn.bind('<Enter>', self.play_hover_sound)
+        minimize_btn = tk.Button(
+            self.title_bar,
+            text="━",
+            bg="#232323",
+            fg="#4fc3f7",
+            font=("Arial", 12, "bold"),
+            bd=0,
+            relief=tk.FLAT,
+            activebackground="#3d3d3d",
+            activeforeground="#4fc3f7",
+            command=self.minimize_window,
+            cursor="hand2"
+        )
+        minimize_btn.pack(side=tk.RIGHT, padx=(0, 0))
+        minimize_btn.bind('<Enter>', self.play_hover_sound)
+
+    def minimize_window(self):
+        self.root.update_idletasks()
+        self.root.iconify()
+
+    def start_move(self, event):
+        self._drag_start_x = event.x
+        self._drag_start_y = event.y
+
+    def on_move(self, event):
+        x = self.root.winfo_x() + event.x - self._drag_start_x
+        y = self.root.winfo_y() + event.y - self._drag_start_y
+        self.root.geometry(f"+{x}+{y}")
+
+    def on_close(self):
+        self.play_sound("close.wav")
+        try:
+            import pygame
+            start = time.time()
+            while pygame.mixer.get_busy() and time.time() - start < 1:
+                self.root.update()
+                time.sleep(0.05)
+        except Exception:
+            pass
+        self.running = False
+        self.websocket_running = False
+        self.root.destroy()
+
+    def play_hover_sound(self, event=None):
+        self.play_sound("hover.wav")
         
     def center_window(self, width, height):
         screen_width = self.root.winfo_screenwidth()
