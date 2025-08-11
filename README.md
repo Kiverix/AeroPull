@@ -37,5 +37,5 @@ AeroPull will create a download history log in the program directory.
 
 Paused downloads can be resumed without starting over.
 
-License
+# License
 MIT License
