@@ -15,7 +15,7 @@ Automatic retries for failed files (up to 3 times)
 
 Download history logging
 
-Optional splash screen and sound effects
+A splash screen and sound effects
 
 Quick links to GAQ9.com and my YouTube channel
 
